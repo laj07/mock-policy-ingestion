@@ -34,3 +34,12 @@ def poll():
 
     save_processed(processed)
     return {"new_files_found": len(new_files), "files": new_files}
+
+@app.get("/status")
+def get_status():
+    processed = load_processed()
+
+    return {
+        "processed_files": len(processed),
+        "files": list(processed)
+    }
