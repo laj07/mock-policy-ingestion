@@ -21,9 +21,7 @@ def poll():
     processed = load_processed()
     new_files = []
     source_counts = {"s3": 0, "email": 0}
-
     for folder, source in [(S3_FOLDER, "s3"), (EMAIL_FOLDER, "email")]:
-        count = 0
         for filepath in folder.glob("*.*"):
             if filepath.name not in processed:
                 content = filepath.read_text(encoding="utf-8")
@@ -33,10 +31,13 @@ def poll():
                     "content": content
                 })
                 processed.add(filepath.name)
-                source_counts[source] += 1 
-
+                source_counts[source] += 1
     save_processed(processed)
-    return {"new_files_found": len(new_files), "files": new_files}
+    return {
+        "new_files_found": len(new_files),
+        "source_breakdown": source_counts,
+        "files": new_files
+    }
 
 @app.get("/status")
 def get_status():
