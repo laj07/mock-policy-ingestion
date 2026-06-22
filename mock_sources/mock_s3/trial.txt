@@ -1,0 +1,25 @@
+PLACING SLIP
+
+Reference:       PS-2026-0042
+Type:            Property Damage & Business Interruption
+
+Insured:         Acme Manufacturing Ltd
+Broker:          Marsh & Co
+Reinsured:       N/A
+
+Period:          1st Jul 2026 to 30th Jun 2027 (both days inclusive)
+Sum Insured:     USD 25,000,000
+Premium:         USD 180,000
+Currency:        USD
+
+Territory:       United Kingdom (Birmingham Plant)
+Occupancy:       Heavy Manufacturing Plant (Metal Pressing & Fabrication)
+
+Perils:
+  - Fire
+  - Explosion
+  - Natural Catastrophe (Windstorm & Flood)
+
+Conditions & Subjectivities:
+  - Survey report outstanding; to be provided within 60 days of inception
+  - War, terrorism and cyber to be excluded
