@@ -14,14 +14,11 @@ def ingestion_agent(state: dict) -> dict:
     }
 
     def extract_by_split(text: str, keywords: list) -> str:
-        """Scan sentence words for a keyword and grab the following words."""
         words = text.lower().split()
         for keyword in keywords:
             if keyword in words:
                 idx = words.index(keyword)
-                # grab up to 4 words after the keyword
                 value_words = words[idx + 1: idx + 5]
-                # stop at common stop words
                 stop = ["and", "with", "for", "the", "is", "are", "in", "on"]
                 clean = []
                 for w in value_words:
@@ -41,7 +38,45 @@ def ingestion_agent(state: dict) -> dict:
             "coverage": None,
             "broker": None,
             "inception": None,
-            
+            "expiry": None,
+            "source": file["source"],
+            "filename": file["filename"]
+        }
+
+        # ── Pass 1: Key: Value structured parsing ──
+        for line in raw_text.splitlines():
+            line = line.strip()
+            if ":" not in line:
+                continue
+            key, _, value = line.partition(":")
+            key = key.strip().lower()
+            value = value.strip()
+
+            if key == "insured":
+                fields["insured"] = value
+            elif key == "premium":
+                fields["premium"] = value
+            elif key == "territory":
+                fields["territory"] = value
+            elif key == "coverage":
+                fields["coverage"] = value
+            elif key == "broker":
+                fields["broker"] = value
+            elif key == "inception":
+                fields["inception"] = value
+            elif key == "expiry":
+                fields["expiry"] = value
+
+        # ── Pass 2: sentence split() fallback for any null fields ──
+        for field, keywords in FIELD_KEYWORDS.items():
+            if fields[field] is None:
+                fields[field] = extract_by_split(raw_text, keywords)
+
+        results.append(fields)
+
+    state["extracted"] = results
+    return state
+
 
 # ── CLASSIFICATION AGENT ─────────────────────────────────────
 def classification_agent(state: dict) -> dict:
@@ -51,7 +86,6 @@ def classification_agent(state: dict) -> dict:
         coverage = (slip["coverage"] or "").lower()
         territory = (slip["territory"] or "").lower()
 
-        # Line of Business rules
         if "marine cargo" in coverage:
             slip["lob"] = "Marine"
         elif "aviation" in coverage:
@@ -61,7 +95,6 @@ def classification_agent(state: dict) -> dict:
         else:
             slip["lob"] = None
 
-        # Region rules
         if "uk" in territory or "united kingdom" in territory or "ireland" in territory:
             slip["region"] = "UK"
         elif "australia" in territory:
@@ -90,7 +123,6 @@ def confidence_router(state: dict) -> dict:
         else:
             slip["confidence"] = 0.25
 
-        # Routing decision
         if slip["confidence"] >= 0.85:
             slip["status"] = "auto_approved"
         elif slip["confidence"] >= 0.6:
