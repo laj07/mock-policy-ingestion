@@ -1,0 +1,9 @@
+PLACING SLIP
+
+Broker: Aon Risk Solutions
+Insured: SkyBridge Airlines
+Coverage: Aviation Hull and Liability
+Territory: United Kingdom, Ireland
+Premium: GBP 220,000
+Inception: 15/07/2026
+Expiry: 15/07/2027

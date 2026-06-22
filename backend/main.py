@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from pathlib import Path
 import json
+from agents import ingestion_agent, classification_agent, confidence_router
 
 app = FastAPI()
 
@@ -36,10 +37,17 @@ def poll():
                     source_counts[source] += 1
 
     save_processed(processed)
+
+    # Run agents
+    state = {"new_files": new_files}
+    state = ingestion_agent(state)
+    state = classification_agent(state)
+    state = confidence_router(state)
+
     return {
         "new_files_found": len(new_files),
         "source_breakdown": source_counts,
-        "files": new_files
+        "results": state["routed"]
     }
 
 @app.get("/status")

@@ -1,0 +1,9 @@
+PLACING SLIP
+
+Broker: Willis Towers Watson
+Insured: Apex Manufacturing Ltd
+Coverage: Commercial Property - Material Damage
+Territory: United States, Canada
+Premium: USD 150,000
+Inception: 01/08/2026
+Expiry: 01/08/2027

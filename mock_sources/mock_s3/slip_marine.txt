@@ -1,0 +1,9 @@
+PLACING SLIP
+
+Broker: Marsh & McLennan
+Insured: Pacific Freight Ltd
+Coverage: Marine Cargo - All Risks
+Territory: Australia, Singapore, Hong Kong
+Premium: AUD 85,000
+Inception: 01/07/2026
+Expiry: 01/07/2027
