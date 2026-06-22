@@ -1,7 +1,36 @@
 # ── INGESTION AGENT ──────────────────────────────────────────
 def ingestion_agent(state: dict) -> dict:
-    """Extract 7 fields from raw slip text using line-by-line parsing."""
+    """Extract 7 fields - tries Key:Value first, falls back to split() for sentences."""
     results = []
+
+    FIELD_KEYWORDS = {
+        "insured": ["insured", "client", "policyholder"],
+        "premium": ["premium", "price", "cost"],
+        "territory": ["territory", "location", "region", "country"],
+        "coverage": ["coverage", "cover", "covering", "insuring"],
+        "broker": ["broker", "brokerage", "agent"],
+        "inception": ["inception", "start", "commencing", "from"],
+        "expiry": ["expiry", "expiring", "expires", "until", "to"],
+    }
+
+    def extract_by_split(text: str, keywords: list) -> str:
+        """Scan sentence words for a keyword and grab the following words."""
+        words = text.lower().split()
+        for keyword in keywords:
+            if keyword in words:
+                idx = words.index(keyword)
+                # grab up to 4 words after the keyword
+                value_words = words[idx + 1: idx + 5]
+                # stop at common stop words
+                stop = ["and", "with", "for", "the", "is", "are", "in", "on"]
+                clean = []
+                for w in value_words:
+                    if w in stop:
+                        break
+                    clean.append(w)
+                if clean:
+                    return " ".join(clean)
+        return None
 
     for file in state["new_files"]:
         raw_text = file["content"]
@@ -12,39 +41,7 @@ def ingestion_agent(state: dict) -> dict:
             "coverage": None,
             "broker": None,
             "inception": None,
-            "expiry": None,
-            "source": file["source"],
-            "filename": file["filename"]
-        }
-
-        for line in raw_text.splitlines():
-            line = line.strip()
-            if ":" not in line:
-                continue
-            key, _, value = line.partition(":")
-            key = key.strip().lower()
-            value = value.strip()
-
-            if key == "insured":
-                fields["insured"] = value
-            elif key == "premium":
-                fields["premium"] = value
-            elif key == "territory":
-                fields["territory"] = value
-            elif key == "coverage":
-                fields["coverage"] = value
-            elif key == "broker":
-                fields["broker"] = value
-            elif key == "inception":
-                fields["inception"] = value
-            elif key == "expiry":
-                fields["expiry"] = value
-
-        results.append(fields)
-
-    state["extracted"] = results
-    return state
-
+            
 
 # ── CLASSIFICATION AGENT ─────────────────────────────────────
 def classification_agent(state: dict) -> dict:
