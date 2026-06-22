@@ -21,17 +21,20 @@ def poll():
     processed = load_processed()
     new_files = []
     source_counts = {"s3": 0, "email": 0}
+
     for folder, source in [(S3_FOLDER, "s3"), (EMAIL_FOLDER, "email")]:
-        for filepath in folder.glob("*.*"):
-            if filepath.name not in processed:
-                content = filepath.read_text(encoding="utf-8")
-                new_files.append({
-                    "source": source,
-                    "filename": filepath.name,
-                    "content": content
-                })
-                processed.add(filepath.name)
-                source_counts[source] += 1
+        for ext in ["*.txt", "*.eml", "*.pdf"]:
+            for filepath in folder.glob(ext):
+                if filepath.name not in processed:
+                    content = filepath.read_text(encoding="utf-8")
+                    new_files.append({
+                        "source": source,
+                        "filename": filepath.name,
+                        "content": content
+                    })
+                    processed.add(filepath.name)
+                    source_counts[source] += 1
+
     save_processed(processed)
     return {
         "new_files_found": len(new_files),
@@ -42,7 +45,6 @@ def poll():
 @app.get("/status")
 def get_status():
     processed = load_processed()
-
     return {
         "processed_files": len(processed),
         "files": list(processed)
@@ -55,7 +57,6 @@ def preview(filename: str):
         if filepath.exists():
             content = filepath.read_text(encoding="utf-8")
             return {"filename": filename, "content": content}
-    
     return {"error": "file not found"}
 
 @app.delete("/reset")
