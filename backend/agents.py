@@ -7,10 +7,10 @@ def ingestion_agent(state: dict) -> dict:
         "insured": ["insured", "client", "policyholder"],
         "premium": ["premium", "price", "cost"],
         "territory": ["territory", "location", "region", "country"],
-        "coverage": ["coverage", "cover", "covering", "insuring"],
+        "coverage": ["coverage", "cover", "covering", "insuring", "type"],
         "broker": ["broker", "brokerage", "agent"],
-        "inception": ["inception", "start", "commencing", "from"],
-        "expiry": ["expiry", "expiring", "expires", "until", "to"],
+        "inception": ["inception", "commencing", "start date"],
+        "expiry": ["expiry", "expiring", "expires"],
     }
 
     def extract_by_split(text: str, keywords: list) -> str:
@@ -19,7 +19,7 @@ def ingestion_agent(state: dict) -> dict:
             if keyword in words:
                 idx = words.index(keyword)
                 value_words = words[idx + 1: idx + 5]
-                stop = ["and", "with", "for", "the", "is", "are", "in", "on"]
+                stop = ["and", "with", "for", "the", "is", "are", "in", "on", "to", "days", "of"]
                 clean = []
                 for w in value_words:
                     if w in stop:
@@ -56,16 +56,21 @@ def ingestion_agent(state: dict) -> dict:
                 fields["insured"] = value
             elif key == "premium":
                 fields["premium"] = value
-            elif key == "territory":
+            elif key in ("territory", "territory/location"):
                 fields["territory"] = value
-            elif key == "coverage":
+            elif key in ("coverage", "type"):
                 fields["coverage"] = value
             elif key == "broker":
                 fields["broker"] = value
             elif key == "inception":
                 fields["inception"] = value
-            elif key == "expiry":
-                fields["expiry"] = value
+            elif key in ("expiry", "period"):
+                # extract expiry from period line like "1st Jul 2026 to 30th Jun 2027"
+                if "to" in value.lower():
+                    fields["expiry"] = value.split("to")[-1].strip()
+                    fields["inception"] = value.split("to")[0].strip()
+                else:
+                    fields["expiry"] = value
 
         # ── Pass 2: sentence split() fallback for any null fields ──
         for field, keywords in FIELD_KEYWORDS.items():
