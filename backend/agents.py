@@ -1,4 +1,4 @@
-# ── INGESTION AGENT ──────────────────────────────────────────
+# INGESTION AGENT
 def ingestion_agent(state: dict) -> dict:
     """Extract 7 fields - tries Key:Value first, falls back to split() for sentences."""
     results = []
@@ -43,7 +43,7 @@ def ingestion_agent(state: dict) -> dict:
             "filename": file["filename"]
         }
 
-        # ── Pass 1: Key: Value structured parsing ──
+        # Pass 1: Key: Value structured parsing 
         for line in raw_text.splitlines():
             line = line.strip()
             if ":" not in line:
@@ -72,7 +72,7 @@ def ingestion_agent(state: dict) -> dict:
                 else:
                     fields["expiry"] = value
 
-        # ── Pass 2: sentence split() fallback for any null fields ──
+        # Pass 2: sentence split() fallback for any null fields
         for field, keywords in FIELD_KEYWORDS.items():
             if fields[field] is None:
                 fields[field] = extract_by_split(raw_text, keywords)
@@ -83,7 +83,7 @@ def ingestion_agent(state: dict) -> dict:
     return state
 
 
-# ── CLASSIFICATION AGENT ─────────────────────────────────────
+# CLASSIFICATION AGENT 
 def classification_agent(state: dict) -> dict:
     """Apply keyword rules to assign LOB and region."""
 
@@ -113,7 +113,7 @@ def classification_agent(state: dict) -> dict:
     return state
 
 
-# ── CONFIDENCE ROUTER ────────────────────────────────────────
+# CONFIDENCE ROUTER 
 def confidence_router(state: dict) -> dict:
     """Score each slip and route based on confidence threshold."""
 
