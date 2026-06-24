@@ -1,3 +1,5 @@
+from langgraph.types import interrupt
+
 # INGESTION AGENT
 def ingestion_agent(state: dict) -> dict:
     """Extract 7 fields - tries Key:Value first, falls back to split() for sentences."""
@@ -132,6 +134,12 @@ def confidence_router(state: dict) -> dict:
             slip["status"] = "auto_approved"
         elif slip["confidence"] >= 0.6:
             slip["status"] = "needs_human_review"
+            # to wait for human decision
+            decision = interrupt({
+                "slip": slip,
+                "message": "Low confidence classification. Please review."
+            })
+            slip["human_decision"] = decision
         else:
             slip["status"] = "rejected"
 
