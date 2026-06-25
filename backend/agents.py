@@ -144,4 +144,21 @@ def confidence_router(state: dict) -> dict:
             slip["status"] = "rejected"
 
     state["routed"] = state["classified"]
+    state["route"] = state["routed"][0]["status"]
+    return state
+
+# human review placeholder agent + reject placeholder agent 
+def human_review_agent(state: dict) -> dict:
+    print("Human review placeholder")
+    for slip in state["routed"]:
+        if slip["status"] == "needs_human_review":
+            print(f"[HUMAN REVIEW] {slip['filename']}")
+    return state
+
+
+def reject_agent(state: dict) -> dict:
+    print("Reject placeholder")
+    for slip in state["routed"]:
+        if slip["status"] == "rejected":
+            print(f"[REJECTED] {slip['filename']}")
     return state
