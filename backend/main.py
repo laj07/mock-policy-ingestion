@@ -78,6 +78,7 @@ def validate(thread_id: str, decision: dict):
 
     return {
         "message": "Decision submitted, pipeline resumed",
+        "paused": bool(final_state.next),
         "final_state": final_state.values.get("routed", [])
     }
 
