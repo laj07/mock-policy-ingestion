@@ -21,7 +21,6 @@ def load_processed():
 def save_processed(processed):
     PROCESSED_FILE.write_text(json.dumps(list(processed)))
 
-
 @app.post("/poll")
 def poll():
     processed = load_processed()
@@ -43,25 +42,36 @@ def poll():
 
     save_processed(processed)
 
-    # Each poll run gets a unique thread_id so LangGraph can track it
-    thread_id = str(uuid.uuid4())
-    config = {"configurable": {"thread_id": thread_id}}
+    all_results = []
+    paused_slips = []
 
-    # Run pipeline: will pause at interrupt() if needs_human_review
-    result = pipeline.invoke({"new_files": new_files}, config=config)
+    for file in new_files:
+        thread_id = str(uuid.uuid4())
+        config = {"configurable": {"thread_id": thread_id}}
 
-    # Check if graph is paused waiting for human
-    state = pipeline.get_state(config)
-    paused = bool(state.next)
+        result = pipeline.invoke({"new_files": [file], "current_slip": file}, config=config)
+
+        state = pipeline.get_state(config)
+        paused = bool(state.next)
+
+        slip_result = result.get("routed", [{}])
+        if not slip_result or slip_result == [{}]:
+            slip_result = result.get("extracted", [{}])
+        slip_result = slip_result[0] if slip_result else {}
+        slip_result["thread_id"] = thread_id
+        slip_result["paused"] = paused
+
+        if paused:
+            paused_slips.append({"thread_id": thread_id, "slip": slip_result})
+
+        all_results.append(slip_result)
 
     return {
-        "thread_id": thread_id,
         "new_files_found": len(new_files),
         "source_breakdown": source_counts,
-        "paused_for_review": paused,
-        "results": result.get("routed", [])
+        "paused_slips": paused_slips,
+        "results": all_results
     }
-
 
 @app.post("/validate/{thread_id}")
 def validate(thread_id: str, decision: dict):

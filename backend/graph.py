@@ -18,6 +18,7 @@ class SlipState(TypedDict):
     classified: List[dict]
     routed: List[dict]
     route: str
+    current_slip: dict  
 
 
 def build_graph():
