@@ -105,7 +105,7 @@ def confidence_router(state: dict) -> dict:
         slip["status"] = "rejected"
 
     state["routed"] = [slip]
-    state["route"] = slip["status"]  # ← now always correct, single slip
+    state["route"] = slip["status"]
     return state
 
 
