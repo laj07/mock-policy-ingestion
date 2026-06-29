@@ -3,6 +3,9 @@ import { useState } from "react"
 const API = "http://127.0.0.1:8000"
 
 function SlipCard({ slip, onApprove, onReject }) {
+  const [lob, setLob] = useState(slip.lob || "")
+  const [region, setRegion] = useState(slip.region || "")
+
   return (
     <div style={styles.card}>
       <div style={styles.cardHeader}>
@@ -23,14 +26,46 @@ function SlipCard({ slip, onApprove, onReject }) {
         <p><b>Premium:</b> {slip.premium || "—"}</p>
         <p><b>Confidence:</b> {slip.confidence}</p>
       </div>
+
       {slip.status === "needs_human_review" && (
-        <div style={styles.cardActions}>
-          <button style={styles.approveBtn} onClick={() => onApprove(slip.thread_id)}>
-            Approve
-          </button>
-          <button style={styles.rejectBtn} onClick={() => onReject(slip.thread_id)}>
-            Reject
-          </button>
+        <div style={{ marginTop: "12px" }}>
+          <div style={{ marginBottom: "8px" }}>
+            <label style={styles.label}>Correct LOB</label>
+            <select value={lob} onChange={e => setLob(e.target.value)} style={styles.select}>
+              <option value="">— Select —</option>
+              <option value="Marine">Marine</option>
+              <option value="Aviation">Aviation</option>
+              <option value="Property">Property</option>
+              <option value="Liability">Liability</option>
+              <option value="Motor">Motor</option>
+            </select>
+          </div>
+          <div style={{ marginBottom: "12px" }}>
+            <label style={styles.label}>Correct Region</label>
+            <input
+              type="text"
+              value={region}
+              onChange={e => setRegion(e.target.value)}
+              placeholder="e.g. Singapore, Canada, Middle East..."
+              style={styles.input}
+            />
+          </div>
+          <div style={styles.cardActions}>
+            <button
+              style={styles.approveBtn}
+              onClick={() => onApprove(slip.thread_id, {
+                status: "approved",
+                corrected_lob: lob,
+                corrected_region: region,
+                reviewer: "human"
+              })}
+            >
+              Approve
+            </button>
+            <button style={styles.rejectBtn} onClick={() => onReject(slip.thread_id)}>
+              Reject
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -53,14 +88,16 @@ export default function App() {
     setLoading(false)
   }
 
-  async function handleApprove(threadId) {
+  async function handleApprove(threadId, decision) {
     await fetch(`${API}/validate/${threadId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "approved", reviewer: "human" })
+      body: JSON.stringify(decision)
     })
     setResults(prev => prev.map(s =>
-      s.thread_id === threadId ? { ...s, status: "auto_approved" } : s
+      s.thread_id === threadId
+        ? { ...s, status: "auto_approved", lob: decision.corrected_lob, region: decision.corrected_region }
+        : s
     ))
   }
 
@@ -78,7 +115,7 @@ export default function App() {
   return (
     <div style={styles.page}>
       <div style={styles.header}>
-        <h1 style={styles.title}>Mock Policy Ingestion Dashboard</h1>
+        <h1 style={styles.title}>Allianz Policy Ingestion Dashboard</h1>
         <button style={styles.pollBtn} onClick={handlePoll} disabled={loading}>
           {loading ? "Polling..." : "Poll Sources"}
         </button>
@@ -86,14 +123,16 @@ export default function App() {
 
       <div style={styles.columns}>
         <div style={styles.column}>
-          <h2 style={{ color: "#16a34a" }}>Auto Approved ({autoApproved.length})</h2>
+          <h2 style={{ color: "#16a34a" }}>✓ Auto Approved ({autoApproved.length})</h2>
           {autoApproved.map(s => <SlipCard key={s.thread_id} slip={s} />)}
         </div>
 
         <div style={styles.column}>
-          <h2 style={{ color: "#d97706" }}>Needs Review ({needsReview.length})</h2>
+          <h2 style={{ color: "#d97706" }}>⚠ Needs Review ({needsReview.length})</h2>
           {needsReview.map(s => (
-            <SlipCard key={s.thread_id} slip={s}
+            <SlipCard
+              key={s.thread_id}
+              slip={s}
               onApprove={handleApprove}
               onReject={handleReject}
             />
@@ -101,7 +140,7 @@ export default function App() {
         </div>
 
         <div style={styles.column}>
-          <h2 style={{ color: "#dc2626" }}>Rejected ({rejected.length})</h2>
+          <h2 style={{ color: "#dc2626" }}>✗ Rejected ({rejected.length})</h2>
           {rejected.map(s => <SlipCard key={s.thread_id} slip={s} />)}
         </div>
       </div>
@@ -124,4 +163,7 @@ const styles = {
   cardActions: { display: "flex", gap: "8px", marginTop: "12px" },
   approveBtn: { background: "#16a34a", color: "white", border: "none", padding: "6px 16px", borderRadius: "6px", cursor: "pointer" },
   rejectBtn: { background: "#dc2626", color: "white", border: "none", padding: "6px 16px", borderRadius: "6px", cursor: "pointer" },
+  label: { fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "4px" },
+  select: { width: "100%", padding: "6px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "13px" },
+  input: { width: "100%", padding: "6px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "13px", boxSizing: "border-box" },
 }
