@@ -1,4 +1,4 @@
-# Allianz Policy Ingestion - Frontend
+# Mock Policy Ingestion 
 
 React dashboard for the mock policy ingestion pipeline.
 
