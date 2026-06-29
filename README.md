@@ -1,12 +1,11 @@
 # Mock Policy Ingestion 
 
-React dashboard for the mock policy ingestion pipeline.
+A React-based dashboard for a mock insurance policy ingestion pipeline powered by a FastAPI backend. The application visualizes the status of incoming insurance slips and enables human review for low-confidence classifications.
 
 ## What it does
 - Polls the FastAPI backend for new insurance slips
 - Displays slips in three columns: Auto Approved, Needs Review, Rejected
 - Reviewer can correct LOB and region on low-confidence slips before approving or rejecting
-
 
 START → ingestion → classification → confidence
                                           ↓
