@@ -4,8 +4,16 @@ import json
 import uuid
 from langgraph.types import Command
 from graph import pipeline
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 S3_FOLDER = Path("../mock_sources/mock_s3")
 EMAIL_FOLDER = Path("../mock_sources/mock_email")
