@@ -123,12 +123,12 @@ export default function App() {
 
       <div style={styles.columns}>
         <div style={styles.column}>
-          <h2 style={{ color: "#16a34a" }}>✓ Auto Approved ({autoApproved.length})</h2>
+          <h2 style={{ color: "#16a34a" }}>Auto Approved ({autoApproved.length})</h2>
           {autoApproved.map(s => <SlipCard key={s.thread_id} slip={s} />)}
         </div>
 
         <div style={styles.column}>
-          <h2 style={{ color: "#d97706" }}>⚠ Needs Review ({needsReview.length})</h2>
+          <h2 style={{ color: "#d97706" }}>Needs Review ({needsReview.length})</h2>
           {needsReview.map(s => (
             <SlipCard
               key={s.thread_id}
@@ -140,7 +140,7 @@ export default function App() {
         </div>
 
         <div style={styles.column}>
-          <h2 style={{ color: "#dc2626" }}>✗ Rejected ({rejected.length})</h2>
+          <h2 style={{ color: "#dc2626" }}>Rejected ({rejected.length})</h2>
           {rejected.map(s => <SlipCard key={s.thread_id} slip={s} />)}
         </div>
       </div>
@@ -149,21 +149,21 @@ export default function App() {
 }
 
 const styles = {
-  page: { fontFamily: "sans-serif", padding: "24px", background: "#f8fafc", minHeight: "100vh" },
+  page: { fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", padding: "24px", background: "#f8fafc", minHeight: "100vh" },
   header: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "32px" },
   title: { fontSize: "24px", fontWeight: "700", color: "#1e293b" },
-  pollBtn: { background: "#2563eb", color: "white", border: "none", padding: "10px 24px", borderRadius: "8px", cursor: "pointer", fontSize: "15px" },
+  pollBtn: { background: "#2563eb", color: "white", border: "none", padding: "10px 24px", borderRadius: "12px", cursor: "pointer", fontSize: "15px" },
   columns: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "24px" },
-  column: { background: "white", borderRadius: "12px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" },
-  card: { border: "1px solid #e2e8f0", borderRadius: "8px", padding: "16px", marginBottom: "12px" },
+  column: { background: "white", borderRadius: "16px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" },
+  card: { border: "1px solid #e2e8f0", borderRadius: "16px", padding: "16px", marginBottom: "12px" },
   cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" },
   filename: { fontWeight: "600", fontSize: "14px", color: "#1e293b" },
-  badge: { color: "white", fontSize: "11px", padding: "2px 8px", borderRadius: "999px" },
+  badge: { color: "white", fontSize: "11px", padding: "2px 8px", borderRadius: "8px" },
   cardBody: { fontSize: "13px", color: "#475569", lineHeight: "1.8" },
   cardActions: { display: "flex", gap: "8px", marginTop: "12px" },
-  approveBtn: { background: "#16a34a", color: "white", border: "none", padding: "6px 16px", borderRadius: "6px", cursor: "pointer" },
-  rejectBtn: { background: "#dc2626", color: "white", border: "none", padding: "6px 16px", borderRadius: "6px", cursor: "pointer" },
+  approveBtn: { background: "#16a34a", color: "white", border: "none", padding: "6px 16px", borderRadius: "10px", cursor: "pointer" },
+  rejectBtn: { background: "#dc2626", color: "white", border: "none", padding: "6px 16px", borderRadius: "10px", cursor: "pointer" },
   label: { fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "4px" },
-  select: { width: "100%", padding: "6px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "13px" },
-  input: { width: "100%", padding: "6px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "13px", boxSizing: "border-box" },
+  select: { width: "100%", padding: "6px 8px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "13px" },
+  input: { width: "100%", padding: "6px 8px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "13px", boxSizing: "border-box" },
 }
