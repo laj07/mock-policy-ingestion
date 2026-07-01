@@ -1,9 +1,8 @@
 # Agents
 
-Four functions registered as LangGraph nodes. Each takes the shared state dict, 
-does one job, and returns the updated state. Slips currently only arrive from 
-`mock_sources/mock_s3/`, the email path exists in `main.py` but has no folder to 
-read from yet.
+Five functions total, four registered as LangGraph nodes plus the routing logic 
+embedded in `confidence_router`. Each takes the shared state dict, does one job, 
+and returns the updated state.
 
 ## 1. ingestion_agent
 
@@ -17,12 +16,10 @@ Two-pass approach:
    `broker`, `coverage`/`type`, `territory`/`territory/location`, `period` which is 
    split on "to" into inception + expiry, etc).
 2. **Fallback pass**, for any field still `null`, scans the raw text word-by-word 
-   for keyword hints (e.g. "insured", "client", "policyholder" all map to the 
-   `insured` field) and grabs the words immediately following, stopping at common 
+   for keyword hints and grabs the words immediately following, stopping at common 
    stop-words.
 
-This handles both clean `Key: Value` slips and looser sentence-based slips, though 
-it still fails on genuinely unlabelled/jumbled text, that's the known gap Bedrock 
+Known gap: fails on genuinely unlabelled/jumbled text, which is what Bedrock 
 classification is meant to close.
 
 ## 2. classification_agent
@@ -30,18 +27,13 @@ classification is meant to close.
 **Input:** `state["extracted"]`
 **Output:** `state["classified"]`, adds `lob` and `region`
 
-Pure keyword matching, no model call yet:
-- `coverage` contains "marine cargo" → Marine; "aviation" → Aviation; "property" → Property
-- `territory` contains "uk"/"united kingdom"/"ireland" → UK; "australia" → Australia; 
-  "usa"/"united states" → USA
-
-This is the piece slated to be replaced with a Bedrock Claude Sonnet 4.6 call, so it 
-can classify unstructured/abbreviated text by context rather than exact keyword match.
+Pure keyword matching, no model call yet. Slated to be replaced with a Bedrock 
+Claude Sonnet 4.6 call.
 
 ## 3. confidence_router
 
 **Input:** `state["classified"]`
-**Output:** `state["routed"]`, `state["route"]`, and (conditionally) triggers `interrupt()`
+**Output:** `state["routed"]`, `state["route"]`
 
 Scoring:
 - LOB found and region found → confidence `0.9`
@@ -49,25 +41,38 @@ Scoring:
 - Neither found → confidence `0.25`
 
 Routing:
-- `≥ 0.85` → `auto_approved`
-- `0.6 to 0.84` → `needs_human_review`, calls `interrupt()`, freezing the graph and 
-  surfacing the slip to the reviewer
-- `< 0.6` → `rejected`
+- `≥ 0.85` → `status: auto_approved`
+- `0.6 to 0.84` → calls `interrupt()`, freezing the graph. **On resume**, reads the 
+  human's decision: `status == "approved"` sets `status: approved` and applies any 
+  `corrected_lob`/`corrected_region`; anything else sets `status: rejected`. The 
+  function does not return until this is resolved, so `route` is always a terminal 
+  value (`auto_approved`, `approved`, or `rejected`), never left at 
+  `needs_human_review`.
+- `< 0.6` → `status: rejected`
 
-`state["route"]` is what the graph's conditional edge reads to decide which node 
-runs next. Slips are processed one at a time through the graph specifically so this 
+This is also where the pause/resume for human review actually lives, there's no 
+separate "human review" node in the graph. Slips are processed one at a time so 
 routing is accurate per-slip.
 
-## 4. human_review_agent / reject_agent
+## 4. drafting_agent
 
-Currently placeholder nodes, each just logs the slip filename. They exist as 
-explicit graph nodes (rather than folding that logic into `confidence_router`) so 
-the graph has real branching, and so each can later be expanded, e.g. `reject_agent` 
-writing to an audit log, `human_review_agent` triggering a notification.
+**Input:** `state["routed"]` (a slip with `status` of `auto_approved` or `approved`)
+**Output:** adds a `draft` field, a formatted placeholder policy text
+
+Runs after any approval path (automatic or human-approved). Currently just 
+templates the extracted fields into a plain-text draft. Real version will merge 
+matched clause library wording, finalized by Claude, once the lookup agent exists.
+
+## 5. reject_agent
+
+**Input:** `state["routed"]` (a slip with `status: rejected`)
+**Output:** unchanged state, logs the filename
+
+Runs for both auto-rejected (confidence < 0.6) and human-rejected slips.
 
 ## Not yet built
 
 - **Lookup agent**, semantic search over the clause library (Titan Embeddings), 
-  duplicate check
-- **Drafting agent**, merges human corrections + matched clauses into the policy 
-  template, Claude finalizes wording
+  duplicate check by content similarity rather than exact hash
+- **Real drafting**, clause-merged, Claude-finalized wording instead of the 
+  placeholder template

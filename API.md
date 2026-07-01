@@ -2,31 +2,33 @@
 
 Base URL: `http://127.0.0.1:8000`
 
+All endpoints marked **🔒** require header: `x-api-key: dev-secret-key`
+
 ---
 
-## POST /poll
+## POST /poll 🔒
 
-Scans the mock source folders for new files, runs each through the LangGraph 
-pipeline, and returns the routed results.
-
-**Request body:** none
+Scans `mock_sources/mock_s3/` (and `mock_sources/mock_email/` if it exists) for new 
+files, runs each through the LangGraph pipeline, and returns the routed results. 
+Skips files already seen by filename or by content hash.
 
 **Response 200:**
 ```json
 {
   "new_files_found": 3,
-  "source_breakdown": { "s3": 2, "email": 1 },
+  "duplicates_skipped": 0,
+  "source_breakdown": { "s3": 3, "email": 0 },
   "paused_slips": [
     {
-      "thread_id": "1cab477b-32fa-412e-9e8e-75e6c9ad978a",
+      "thread_id": "e4f71622-af27-4c4a-9228-d76c645ea645",
       "slip": {
-        "insured": "Pacific Exports",
-        "coverage": "marine cargo",
-        "lob": "Marine",
+        "insured": "Apex Manufacturing Ltd",
+        "coverage": "Commercial Property - Material Damage",
+        "lob": "Property",
         "region": null,
         "confidence": 0.65,
-        "status": "needs_human_review",
-        "filename": "slip_messy.txt"
+        "filename": "slip_property.txt",
+        "paused": true
       }
     }
   ],
@@ -36,14 +38,14 @@ pipeline, and returns the routed results.
 
 Each entry in `results` includes: `insured`, `premium`, `territory`, `coverage`, 
 `broker`, `inception`, `expiry`, `source`, `filename`, `lob`, `region`, `confidence`, 
-`status`, `thread_id`, `paused`.
+`status`, `thread_id`, `paused`, and `draft` (only present once a slip reaches 
+`auto_approved` or `approved`).
 
-`paused_slips` is a convenience subset — only the entries currently frozen at 
-`interrupt()`, waiting on `/validate`.
+**401** if `x-api-key` is missing or wrong.
 
 ---
 
-## POST /validate/{thread_id}
+## POST /validate/{thread_id} 🔒
 
 Resumes a paused pipeline run with the human reviewer's decision.
 
@@ -58,17 +60,20 @@ Resumes a paused pipeline run with the human reviewer's decision.
   "reviewer": "human"
 }
 ```
-(Body is a free-form dict — whatever the reviewer submits gets stored on the slip 
-as `human_decision` and used to resume the graph.)
+`status: "approved"` routes the slip to the drafting agent. Anything else (or a 
+missing `status`) routes it to rejection.
 
 **Response 200:**
 ```json
 {
   "message": "Decision submitted, pipeline resumed",
   "paused": false,
-  "final_state": [ /* routed slip data after resuming */ ]
+  "final_state": [ /* routed slip, including "draft" if approved */ ]
 }
 ```
+
+This works even if the backend process was restarted between `/poll` and `/validate`,
+the paused state is read from `checkpoints.sqlite`, not memory.
 
 ---
 
@@ -90,8 +95,6 @@ Returns which files have already been processed (dedup tracking).
 
 Returns the raw text content of a specific slip file, for debugging.
 
-**Path parameter:** `filename`
-
 **Response 200:**
 ```json
 { "filename": "slip_marine.txt", "content": "PLACING SLIP\n\nBroker: ..." }
@@ -104,10 +107,10 @@ Returns the raw text content of a specific slip file, for debugging.
 
 ---
 
-## DELETE /reset
+## DELETE /reset 🔒
 
-Clears `processed.json` so all slips in the mock folders will be treated as new 
-on the next `/poll`. Dev/testing utility only — not intended for the reviewer-facing UI.
+Clears `processed.json` (both filenames and hashes) so all slips will be treated 
+as new on the next `/poll`. Dev/testing utility, not for the reviewer-facing UI.
 
 **Response 200:**
 ```json

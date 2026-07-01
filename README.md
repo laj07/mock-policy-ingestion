@@ -3,41 +3,34 @@
 A prototype automating the manual policy drafting workflow run by a policy admin team. 
 Broker slips arrive by email or land on a shared drive/S3. The system extracts fields, 
 classifies the policy type and region, scores confidence, and routes low-confidence slips 
-to a human reviewer via a React dashboard before final approval.
+to a human reviewer via a React dashboard before drafting.
 
 Built with **FastAPI + LangGraph** on the backend and **React (Vite)** on the frontend.
-Classification is currently rule-based (keyword matching) as a placeholder, though the plan is 
+Classification is currently rule-based (keyword matching) as a placeholder, the plan is 
 to replace this with an AWS Bedrock (Claude Sonnet 4.6) call.
 
-## What it does
+## Tech stack
 
-- Polls the FastAPI backend for new insurance slips
-- Routes each slip through a LangGraph pipeline (ingestion → classification → confidence routing)
-- Displays slips in three columns: Auto Approved, Needs Review, Rejected
-- Reviewer can correct LOB and region on low-confidence slips before approving or rejecting
-
-## Pipeline flow
-```
-START → ingestion → classification → confidence
-                                          ↓
-                              ┌─── auto_approved ───→ END
-                              ├─── needs_human_review ───→ human_review → END
-                              └─── rejected ───→ reject → END
-```
+- **Backend:** FastAPI, LangGraph, Python
+- **Frontend:** React, Vite
+- **State persistence:** LangGraph `SqliteSaver` checkpointer (file-based, survives restarts)
+- **Frontend persistence:** browser `localStorage`
+- **Auth:** static API key header (dev placeholder, not production-grade)
 
 ## Project Structure 
 ```
 mock-policy-ingestion/
 ├── backend/
-│   ├── main.py          # FastAPI app, endpoints
-│   ├── agents.py         # ingestion, classification, confidence, review, reject agents
-│   ├── graph.py           # LangGraph state + node/edge wiring
-│   └── processed.json     # tracks already-ingested filenames (dedup)
+│   ├── main.py            # FastAPI app, endpoints, auth, duplicate detection
+│   ├── agents.py           # ingestion, classification, confidence, drafting, reject agents
+│   ├── graph.py             # LangGraph state + node/edge wiring
+│   ├── processed.json       # tracks ingested filenames + content hashes (dedup)
+│   └── checkpoints.sqlite    # LangGraph paused-run state, survives restarts
 ├── frontend/
-│   └── src/App.jsx        # dashboard UI
+│   └── src/App.jsx          # dashboard UI
 ├── mock_sources/
-│   ├── mock_s3/            # simulated S3 bucket (drop .txt files here)
-│   └── mock_email/         # simulated email inbox (currently empty)
+│   ├── mock_s3/               # simulated S3 bucket (drop .txt files here)
+│   └── mock_email/            # simulated email inbox (not yet populated)
 └── README.md
 ```
 

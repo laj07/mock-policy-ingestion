@@ -100,7 +100,7 @@ export default function App() {
   async function handleApprove(threadId, decision) {
     await fetch(`${API}/validate/${threadId}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-api-key": "dev-secret-key" },
       body: JSON.stringify(decision)
     })
     setResults(prev => prev.map(s =>
@@ -113,7 +113,7 @@ export default function App() {
   async function handleReject(threadId) {
     await fetch(`${API}/validate/${threadId}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-api-key": "dev-secret-key" },
       body: JSON.stringify({ status: "rejected", reviewer: "human" })
     })
     setResults(prev => prev.map(s =>
