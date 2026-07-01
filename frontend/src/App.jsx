@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 const API = "http://127.0.0.1:8000"
+const STORAGE_KEY = "policy_dashboard_results"
 
 function SlipCard({ slip, onApprove, onReject }) {
   const [lob, setLob] = useState(slip.lob || "")
@@ -73,18 +74,26 @@ function SlipCard({ slip, onApprove, onReject }) {
 }
 
 export default function App() {
-  const [results, setResults] = useState([])
+  const [results, setResults] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    return saved ? JSON.parse(saved) : []
+  })
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(results))
+  }, [results])
 
   const autoApproved = results.filter(s => s.status === "auto_approved")
   const needsReview = results.filter(s => s.status === "needs_human_review")
   const rejected = results.filter(s => s.status === "rejected")
+  const allReviewed = results.length > 0 && needsReview.length === 0
 
   async function handlePoll() {
     setLoading(true)
     const res = await fetch(`${API}/poll`, { method: "POST" })
     const data = await res.json()
-    setResults(data.results)
+    setResults(prev => [...prev, ...data.results])
     setLoading(false)
   }
 
@@ -112,14 +121,30 @@ export default function App() {
     ))
   }
 
+  function handleClear() {
+    setResults([])
+    localStorage.removeItem(STORAGE_KEY)
+  }
+
   return (
     <div style={styles.page}>
       <div style={styles.header}>
         <h1 style={styles.title}>Allianz Policy Ingestion Dashboard</h1>
-        <button style={styles.pollBtn} onClick={handlePoll} disabled={loading}>
-          {loading ? "Polling..." : "Poll Sources"}
-        </button>
+        <div style={{ display: "flex", gap: "12px" }}>
+          <button style={styles.pollBtn} onClick={handlePoll} disabled={loading}>
+            {loading ? "Polling..." : "Poll Sources"}
+          </button>
+          <button style={styles.clearBtn} onClick={handleClear}>
+            Clear Dashboard
+          </button>
+        </div>
       </div>
+
+      {allReviewed && (
+        <div style={styles.doneBanner}>
+          ✓ All slips reviewed — nothing pending human review
+        </div>
+      )}
 
       <div style={styles.columns}>
         <div style={styles.column}>
@@ -150,9 +175,11 @@ export default function App() {
 
 const styles = {
   page: { fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", padding: "24px", background: "#f8fafc", minHeight: "100vh" },
-  header: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "32px" },
+  header: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" },
   title: { fontSize: "24px", fontWeight: "700", color: "#1e293b" },
   pollBtn: { background: "#2563eb", color: "white", border: "none", padding: "10px 24px", borderRadius: "12px", cursor: "pointer", fontSize: "15px" },
+  clearBtn: { background: "#64748b", color: "white", border: "none", padding: "10px 24px", borderRadius: "12px", cursor: "pointer", fontSize: "15px" },
+  doneBanner: { background: "#dcfce7", color: "#166534", padding: "12px 20px", borderRadius: "12px", marginBottom: "24px", fontWeight: "600", fontSize: "14px" },
   columns: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "24px" },
   column: { background: "white", borderRadius: "16px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" },
   card: { border: "1px solid #e2e8f0", borderRadius: "16px", padding: "16px", marginBottom: "12px" },
