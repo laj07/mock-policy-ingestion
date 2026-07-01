@@ -142,7 +142,8 @@ export default function App() {
 
       {allReviewed && (
         <div style={styles.doneBanner}>
-          ✓ All slips reviewed — nothing pending human review
+          All slips reviewed
+          Nothing pending for human review
         </div>
       )}
 
