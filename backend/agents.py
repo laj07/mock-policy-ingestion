@@ -95,12 +95,20 @@ def confidence_router(state: dict) -> dict:
     if slip["confidence"] >= 0.85:
         slip["status"] = "auto_approved"
     elif slip["confidence"] >= 0.6:
-        slip["status"] = "needs_human_review"
         decision = interrupt({
             "slip": slip,
             "message": "Low confidence classification. Please review."
         })
         slip["human_decision"] = decision
+
+        if isinstance(decision, dict) and decision.get("status") == "approved":
+            slip["status"] = "approved"
+            if decision.get("corrected_lob"):
+                slip["lob"] = decision["corrected_lob"]
+            if decision.get("corrected_region"):
+                slip["region"] = decision["corrected_region"]
+        else:
+            slip["status"] = "rejected"
     else:
         slip["status"] = "rejected"
 
@@ -109,9 +117,21 @@ def confidence_router(state: dict) -> dict:
     return state
 
 
-def human_review_agent(state: dict) -> dict:
+def drafting_agent(state: dict) -> dict:
     slip = state["routed"][0]
-    print(f"[HUMAN REVIEW] {slip['filename']}")
+    slip["draft"] = (
+        f"POLICY DRAFT\n"
+        f"Insured: {slip.get('insured')}\n"
+        f"Broker: {slip.get('broker')}\n"
+        f"LOB: {slip.get('lob')}\n"
+        f"Region: {slip.get('region')}\n"
+        f"Premium: {slip.get('premium')}\n"
+        f"Inception: {slip.get('inception')}\n"
+        f"Expiry: {slip.get('expiry')}\n"
+        f"[Placeholder - real drafting merges clause library wording via Claude]"
+    )
+    print(f"[DRAFTED] {slip['filename']}")
+    state["routed"] = [slip]
     return state
 
 

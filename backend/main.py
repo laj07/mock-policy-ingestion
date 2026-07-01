@@ -1,10 +1,13 @@
-from fastapi import FastAPI
-from pathlib import Path
+import hashlib
 import json
 import uuid
-from langgraph.types import Command
-from graph import pipeline
+from pathlib import Path
+
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from langgraph.types import Command
+
+from graph import pipeline
 
 app = FastAPI()
 
@@ -19,34 +22,65 @@ S3_FOLDER = Path("../mock_sources/mock_s3")
 EMAIL_FOLDER = Path("../mock_sources/mock_email")
 PROCESSED_FILE = Path("processed.json")
 
+API_KEY = "dev-secret-key"
+
+
+def require_api_key(x_api_key: str | None = Header(default=None)):
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Missing or invalid API key")
+
 
 def load_processed():
     if PROCESSED_FILE.exists():
-        return set(json.loads(PROCESSED_FILE.read_text()))
-    return set()
+        data = json.loads(PROCESSED_FILE.read_text())
+        if isinstance(data, list):
+            return {"filenames": set(data), "hashes": set()}
+        return {"filenames": set(data.get("filenames", [])), "hashes": set(data.get("hashes", []))}
+    return {"filenames": set(), "hashes": set()}
 
 
 def save_processed(processed):
-    PROCESSED_FILE.write_text(json.dumps(list(processed)))
+    PROCESSED_FILE.write_text(json.dumps({
+        "filenames": list(processed["filenames"]),
+        "hashes": list(processed["hashes"]),
+    }))
+
+
+def content_hash(content: str) -> str:
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
 
 @app.post("/poll")
-def poll():
+def poll(auth=Depends(require_api_key)):
     processed = load_processed()
     new_files = []
     source_counts = {"s3": 0, "email": 0}
+    duplicate_count = 0
 
     for folder, source in [(S3_FOLDER, "s3"), (EMAIL_FOLDER, "email")]:
+        if not folder.exists():
+            continue
         for ext in ["*.txt", "*.eml", "*.pdf"]:
             for filepath in folder.glob(ext):
-                if filepath.name not in processed:
-                    content = filepath.read_text(encoding="utf-8")
-                    new_files.append({
-                        "source": source,
-                        "filename": filepath.name,
-                        "content": content
-                    })
-                    processed.add(filepath.name)
-                    source_counts[source] += 1
+                if filepath.name in processed["filenames"]:
+                    continue
+
+                content = filepath.read_text(encoding="utf-8")
+                chash = content_hash(content)
+
+                if chash in processed["hashes"]:
+                    processed["filenames"].add(filepath.name)
+                    duplicate_count += 1
+                    continue
+
+                new_files.append({
+                    "source": source,
+                    "filename": filepath.name,
+                    "content": content
+                })
+                processed["filenames"].add(filepath.name)
+                processed["hashes"].add(chash)
+                source_counts[source] += 1
 
     save_processed(processed)
 
@@ -76,24 +110,18 @@ def poll():
 
     return {
         "new_files_found": len(new_files),
+        "duplicates_skipped": duplicate_count,
         "source_breakdown": source_counts,
         "paused_slips": paused_slips,
         "results": all_results
     }
 
+
 @app.post("/validate/{thread_id}")
-def validate(thread_id: str, decision: dict):
+def validate(thread_id: str, decision: dict, auth=Depends(require_api_key)):
     config = {"configurable": {"thread_id": thread_id}}
-
-    # Resume the paused graph with the human's decision
-    pipeline.invoke(
-        Command(resume=decision),
-        config=config
-    )
-
-    # Get final state after resuming
+    pipeline.invoke(Command(resume=decision), config=config)
     final_state = pipeline.get_state(config)
-
     return {
         "message": "Decision submitted, pipeline resumed",
         "paused": bool(final_state.next),
@@ -105,8 +133,8 @@ def validate(thread_id: str, decision: dict):
 def get_status():
     processed = load_processed()
     return {
-        "processed_files": len(processed),
-        "files": list(processed)
+        "processed_files": len(processed["filenames"]),
+        "files": list(processed["filenames"])
     }
 
 
@@ -121,6 +149,6 @@ def preview(filename: str):
 
 
 @app.delete("/reset")
-def reset():
-    save_processed(set())
+def reset(auth=Depends(require_api_key)):
+    save_processed({"filenames": set(), "hashes": set()})
     return {"message": "processed list cleared"}
