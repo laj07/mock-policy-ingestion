@@ -34,13 +34,6 @@ mock-policy-ingestion/
 └── README.md
 ```
 
-## Tech stack
-
-- **Backend:** FastAPI, LangGraph, Python
-- **Frontend:** React, Vite
-- **State persistence:** LangGraph `MemorySaver` checkpointer (in-memory, dev only)
-- **Frontend persistence:** browser `localStorage`
-
 ## Setup
 
 ### Backend
@@ -49,7 +42,7 @@ mock-policy-ingestion/
 cd mock-policy-ingestion
 python -m venv venv
 source venv/bin/activate
-pip install fastapi uvicorn langgraph
+pip install fastapi uvicorn langgraph langgraph-checkpoint-sqlite
 cd backend
 uvicorn main:app --reload
 ```
@@ -68,18 +61,29 @@ Runs at `http://localhost:5173`.
 
 Both need to be running simultaneously, in separate terminals.
 
+## Auth
+
+`/poll`, `/validate/{thread_id}`, and `/reset` require a header:
+x-api-key: dev-secret-key
+
+This is a hardcoded dev placeholder. `/status` and `/preview/{filename}` 
+are unauthenticated (read-only debug endpoints).
+
 ## Usage
 
-1. Drop sample slip `.txt` files into `mock_sources/mock_s3/` or `mock_sources/mock_email/`
+1. Drop sample slip `.txt` files into `mock_sources/mock_s3/`
 2. Open the dashboard, click **Poll Sources**
 3. Slips are scored and sorted into three columns: **Auto Approved**, **Needs Review**, **Rejected**
 4. For slips needing review, correct the LOB/region and click **Approve** or **Reject**
-5. Dashboard state persists across page refresh (stored in `localStorage`)
+5. Approved slips (auto or human-reviewed) get a placeholder policy draft attached
+6. Dashboard state persists across page refresh (stored in `localStorage`); paused reviews 
+   persist across backend restarts (stored in `checkpoints.sqlite`)
 
 ## Known limitations (prototype stage)
 
 - Sources are mocked local folders, not real S3/IMAP
+- Only `mock_sources/mock_s3/` is populated, the email path exists in code but has no folder yet
 - Classification is keyword-based, not Claude/Bedrock-based yet
-- No authentication on any endpoint
-- Checkpointer is in-memory, so paused review states are lost on backend restart
-- No drafting agent yet, pipeline stops after human validation
+- Auth is a single hardcoded key, not real user identity or key rotation
+- Duplicate detection is filename + content-hash based, not a proper duplicate registry
+- No clause lookup agent, drafting output is a placeholder template, not clause-merged final wording
