@@ -10,6 +10,7 @@ Classification is currently rule-based (keyword matching) as a placeholder, the 
 to replace this with an AWS Bedrock (Claude Sonnet 4.6) call.
 
 ## Business Context
+
 The policy admin team at Allianz manually reviewed every incoming broker slip, including
 extracting fields, classifying policy type and territory, and triaging for review. 
 This pipeline automates that workflow end to end, routing only low-confidence cases 
