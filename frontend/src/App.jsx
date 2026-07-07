@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 
 const API = "http://127.0.0.1:8000"
+const API_KEY = "dev-secret-key"
 const STORAGE_KEY = "policy_dashboard_results"
 
 function SlipCard({ slip, onApprove, onReject }) {
@@ -13,7 +14,7 @@ function SlipCard({ slip, onApprove, onReject }) {
         <span style={styles.filename}>{slip.filename}</span>
         <span style={{
           ...styles.badge,
-          background: slip.status === "auto_approved" ? "#16a34a" :
+          background: slip.status === "auto_approved" || slip.status === "approved" ? "#16a34a" :
                       slip.status === "needs_human_review" ? "#d97706" : "#dc2626"
         }}>
           {slip.status}
@@ -79,46 +80,69 @@ export default function App() {
     return saved ? JSON.parse(saved) : []
   })
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(results))
   }, [results])
 
-  const autoApproved = results.filter(s => s.status === "auto_approved")
+  const autoApproved = results.filter(s => s.status === "auto_approved" || s.status === "approved")
   const needsReview = results.filter(s => s.status === "needs_human_review")
   const rejected = results.filter(s => s.status === "rejected")
   const allReviewed = results.length > 0 && needsReview.length === 0
 
   async function handlePoll() {
     setLoading(true)
-    const res = await fetch(`${API}/poll`, { method: "POST" })
-    const data = await res.json()
-    setResults(prev => [...prev, ...data.results])
+    setError(null)
+    try {
+      const res = await fetch(`${API}/poll`, {
+        method: "POST",
+        headers: { "x-api-key": API_KEY }
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`${res.status}: ${text}`)
+      }
+      const data = await res.json()
+      setResults(prev => [...prev, ...(data.results || [])])
+    } catch (err) {
+      setError(err.message)
+    }
     setLoading(false)
   }
 
   async function handleApprove(threadId, decision) {
-    await fetch(`${API}/validate/${threadId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": "dev-secret-key" },
-      body: JSON.stringify(decision)
-    })
-    setResults(prev => prev.map(s =>
-      s.thread_id === threadId
-        ? { ...s, status: "auto_approved", lob: decision.corrected_lob, region: decision.corrected_region }
-        : s
-    ))
+    try {
+      const res = await fetch(`${API}/validate/${threadId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+        body: JSON.stringify(decision)
+      })
+      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
+      setResults(prev => prev.map(s =>
+        s.thread_id === threadId
+          ? { ...s, status: "approved", lob: decision.corrected_lob || s.lob, region: decision.corrected_region || s.region }
+          : s
+      ))
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
   async function handleReject(threadId) {
-    await fetch(`${API}/validate/${threadId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": "dev-secret-key" },
-      body: JSON.stringify({ status: "rejected", reviewer: "human" })
-    })
-    setResults(prev => prev.map(s =>
-      s.thread_id === threadId ? { ...s, status: "rejected" } : s
-    ))
+    try {
+      const res = await fetch(`${API}/validate/${threadId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+        body: JSON.stringify({ status: "rejected", reviewer: "human" })
+      })
+      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
+      setResults(prev => prev.map(s =>
+        s.thread_id === threadId ? { ...s, status: "rejected" } : s
+      ))
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
   function handleClear() {
@@ -140,10 +164,15 @@ export default function App() {
         </div>
       </div>
 
+      {error && (
+        <div style={styles.errorBanner}>
+          Error: {error}
+        </div>
+      )}
+
       {allReviewed && (
         <div style={styles.doneBanner}>
-          All slips reviewed
-          Nothing pending for human review
+          All slips reviewed, nothing pending human review
         </div>
       )}
 
@@ -180,6 +209,7 @@ const styles = {
   title: { fontSize: "24px", fontWeight: "700", color: "#1e293b" },
   pollBtn: { background: "#2563eb", color: "white", border: "none", padding: "10px 24px", borderRadius: "12px", cursor: "pointer", fontSize: "15px" },
   clearBtn: { background: "#64748b", color: "white", border: "none", padding: "10px 24px", borderRadius: "12px", cursor: "pointer", fontSize: "15px" },
+  errorBanner: { background: "#fee2e2", color: "#991b1b", padding: "12px 20px", borderRadius: "12px", marginBottom: "16px", fontWeight: "600", fontSize: "14px" },
   doneBanner: { background: "#dcfce7", color: "#166534", padding: "12px 20px", borderRadius: "12px", marginBottom: "24px", fontWeight: "600", fontSize: "14px" },
   columns: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "24px" },
   column: { background: "white", borderRadius: "16px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" },
