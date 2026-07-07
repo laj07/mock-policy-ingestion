@@ -4,3 +4,5 @@ __pycache__/
 backend/processed.json
 lc-academy-env/
 checkpoints.sqlite
+checkpoints.sqlite-shm
+checkpoints.sqlite-wal

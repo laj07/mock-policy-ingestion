@@ -1,7 +1,7 @@
 Insured: Delta Shipping Co
 Broker: Willis Towers Watson
 Coverage: Marine Cargo - All Risks
-Territory: Australia
+Territory: -
 Premium: AUD 120,000
 Inception: 01/08/2026
 Expiry: 01/08/2027

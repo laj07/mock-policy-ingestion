@@ -95,6 +95,7 @@ def confidence_router(state: dict) -> dict:
     if slip["confidence"] >= 0.85:
         slip["status"] = "auto_approved"
     elif slip["confidence"] >= 0.6:
+        slip["status"] = "needs_human_review"
         decision = interrupt({
             "slip": slip,
             "message": "Low confidence classification. Please review."
